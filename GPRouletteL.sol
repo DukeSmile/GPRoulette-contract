@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 contract Roulette {
@@ -21,6 +22,7 @@ contract Roulette {
   uint nextRoundTimestamp;
   address creator;
   uint256 maxAmountAllowedInTheBank;
+  uint256 totalBetAmount;
   mapping (address => uint256) winnings;
   uint8[] payouts;
   uint8[] numberRange;
@@ -29,10 +31,11 @@ contract Roulette {
   bool[37] isNumberBlack;
   Bet[] public bets;
 
-  constructor(uint256 maxBankAmount) public payable {
+  constructor(uint256 maxBankAmount) {
     creator = msg.sender;
     necessaryBalance = 0;
-    nextRoundTimestamp = now;
+    totalBetAmount = 0;
+    nextRoundTimestamp = block.timestamp;
     payouts = [36, 3, 3, 2, 2, 2];
     numberRange = [36, 2, 2, 1, 1, 1];
     isNumberRed= [false, true, false, true, false, true, false, true, false, true, false, false, true, false, true, false, true, false, true, true, false, true, false, true, false, true, false, true, false, false, true, false, true, false, true, false, true];
@@ -40,10 +43,11 @@ contract Roulette {
     maxAmountAllowedInTheBank = maxBankAmount; /* 2 ether */
   }
 
+  event RandomNumber(uint256 number);
   function getStatus() public view returns(uint, uint, uint, uint, uint) {
     return (
       bets.length,             // number of active bets
-      totalBetAmount, // value of active bets
+      totalBetAmount,         // value of active bets
       nextRoundTimestamp,      // when can we play again
       address(this).balance,   // roulette balance
       winnings[msg.sender]     // winnings of player
@@ -65,18 +69,19 @@ contract Roulette {
       number: number,
       amount: msg.value
     }));
+    totalBetAmount += msg.value;
   }
 
   function spinWheel() public {
     require(bets.length > 0, 'There is no bet');
-    require(now > nextRoundTimestamp, 'We are not allowed to spin the wheel');
-    nextRoundTimestamp = now; // reset nextRoundTime
+    require(block.timestamp > nextRoundTimestamp, 'We are not allowed to spin the wheel');
+    nextRoundTimestamp = block.timestamp; // reset nextRoundTime
     
     //generating random
     uint diff = block.difficulty;
     bytes32 hash = blockhash(block.number-1);
     Bet memory lb = bets[bets.length-1];
-    uint number = uint(keccak256(abi.encodePacked(now, diff, hash, lb.betType, lb.player, lb.number))) % 37;
+    uint number = uint(keccak256(abi.encodePacked(block.timestamp, diff, hash, lb.betType, lb.player, lb.number))) % 37;
     
     //check every bet for this number
     for (uint i = 0; i < bets.length; i++) {
@@ -118,8 +123,9 @@ contract Roulette {
         winnings[b.player] += b.amount * payouts[b.betType];
       }
     }
-    bets.length = 0;
+    delete bets;
     necessaryBalance = 0;
+    totalBetAmount = 0;
     /* check if to much money in the bank */
     if (address(this).balance > maxAmountAllowedInTheBank) takeProfits();
     emit RandomNumber(number);
@@ -138,12 +144,10 @@ contract Roulette {
 
   function takeProfits() internal {
     uint amount = address(this).balance - maxAmountAllowedInTheBank;
-    if (amount > 0) creator.transfer(amount);
+    // if (amount > 0) creator.transfer(amount);
+    if (amount > 0) {
+      (bool success, ) = creator.call{value: amount}("");
+      require(success, "ETH transfer failed");
+    }
   }
-  
-  function creatorKill() public {
-    require(msg.sender == creator);
-    selfdestruct(creator);
-  }
- 
 }
