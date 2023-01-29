@@ -20,6 +20,7 @@ contract Roulette {
   uint necessaryBalance;
   uint nextRoundTimestamp;
   address creator;
+  uint256 maxAmountAllowedInTheBank;
   mapping (address => uint256) winnings;
   uint8[] payouts;
   uint8[] numberRange;
@@ -28,7 +29,7 @@ contract Roulette {
   bool[37] isNumberBlack;
   Bet[] public bets;
 
-  constructor() public payable {
+  constructor(uint256 maxBankAmount) public payable {
     creator = msg.sender;
     necessaryBalance = 0;
     nextRoundTimestamp = now;
@@ -36,9 +37,9 @@ contract Roulette {
     numberRange = [36, 2, 2, 1, 1, 1];
     isNumberRed= [false, true, false, true, false, true, false, true, false, true, false, false, true, false, true, false, true, false, true, true, false, true, false, true, false, true, false, true, false, false, true, false, true, false, true, false, true];
     isNumberBlack = [false, false, true, false, true, false, true, false, true, false, true, true, false, true, false, true, false, true, false, false, true, false, true, false, true, false, true, false, true, true, false, true, false, true, false, true, false];
+    maxAmountAllowedInTheBank = maxBankAmount; /* 2 ether */
   }
 
-  
   function getStatus() public view returns(uint, uint, uint, uint, uint) {
     return (
       bets.length,             // number of active bets
@@ -119,7 +120,8 @@ contract Roulette {
     }
     bets.length = 0;
     necessaryBalance = 0;
-    takeProfits();
+    /* check if to much money in the bank */
+    if (address(this).balance > maxAmountAllowedInTheBank) takeProfits();
     emit RandomNumber(number);
   }
     
