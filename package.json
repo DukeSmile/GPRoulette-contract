@@ -1,0 +1,17 @@
+{
+  "name": "GPRoulette - web3",
+  "version": "1.0.0",
+  "description": "",
+  "license": "UNLICENSED",
+  "main": "src/index.js",
+  "scripts": {},
+  "dependencies": {
+    "@hashgraph/sdk": "2.17.0",
+    "dotenv": "14.2.0",
+    "solc": "0.8.11"
+  },
+  "devDependencies": {
+    "nodemon": "1.18.4"
+  },
+  "keywords": []
+}
